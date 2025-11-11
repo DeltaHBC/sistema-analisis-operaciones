@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análisis de Operaciones Diarias - ACERO XD</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --info-color: #1abc9c;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --sidebar-width: 250px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Verdana', sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar h1 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .sidebar h2 {
+            font-size: 12px;
+            color: #bdc3c7;
+            font-weight: normal;
+        }
+
+        .logo-placeholder {
+            width: 120px;
+            height: 120px;
+            background-color: #34495e;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .sidebar-buttons {
+            padding: 10px 20px;
+        }
+
+        .sidebar-button {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            margin: 8px 0;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar-button:hover {
+            opacity: 0.9;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main-title {
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            color: var(--secondary-color);
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .resumen-ejecutivo {
+            background-color: #e8f4fd;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .metric {
+            flex: 1;
+            min-width: 200px;
+            margin: 5px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--secondary-color);
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .material-detail {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .material-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 15px;
+            font-weight: bold;
+        }
+
+        .material-data {
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+        }
+
+        .material-metrics {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .material-metric {
+            margin: 5px;
+            font-size: 11px;
+        }
+
+        .chart-container {
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--secondary-color);
+        }
+
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .file-input-label:hover {
+            background-color: #2980b9;
+        }
+
+        .status-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .scrollable-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .metric-row {
+                flex-direction: column;
+            }
+            
+            .metric {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>DC-ACERO</h1>
+            <h2>Análisis de Operaciones</h2>
+        </div>
+        <div class="logo-placeholder">
+            ⚡
+        </div>
+        <div class="sidebar-buttons">
+            <button class="sidebar-button" onclick="selectArchive()">📂 Cargar Excel</button>
+            <button class="sidebar-button" onclick="mostrarAnalisisOperaciones()">🔄 Actualizar</button>
+            <button class="sidebar-button" onclick="mostrarGraficoKGporDia()">📊 KG por Día</button>
+            <button class="sidebar-button" onclick="mostrarGraficoTopMateriales()">📈 Top Materiales</button>
+            <button class="sidebar-button" onclick="mostrarGraficoDineroDia()">💰 Dinero por Día</button>
+            <button class="sidebar-button" onclick="mostrarGraficoUtilidades()">💵 Utilidades</button>
+            <button class="sidebar-button" onclick="generarReporteCompletoPDF()">📄 Generar PDF</button>
+            <button class="sidebar-button" onclick="mostrarAyuda()">ℹ️ Ayuda</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="main-title">ANÁLISIS DE OPERACIONES DIARIAS - DC-ACERO</div>
+        
+        <!-- Pantalla inicial -->
+        <div id="pantallaInicial">
+            <div class="card">
+                <h2 style="text-align: center; margin-bottom: 20px;">BIENVENIDO A DC-ACERO</h2>
+                <p style="text-align: center; margin-bottom: 30px; font-size: 16px; color: #7f8c8d;">
+                    Sistema de Análisis de Operaciones Diarias
+                </p>
+                
+                <div class="file-input-container">
+                    <input type="file" id="fileInput" class="file-input" accept=".xlsx, .xlsm">
+                    <label for="fileInput" class="file-input-label">📂 CARGAR ARCHIVO EXCEL</label>
+                </div>
+                
+                <div class="card" style="background-color: #e8f4fd; margin-top: 20px;">
+                    <h3 style="text-align: center; margin-bottom: 10px;">📋 EL SISTEMA ANALIZA:</h3>
+                    <ul style="padding-left: 20px;">
+                        <li>KG comprados a la semana</li>
+                        <li>KG comprados por día</li>
+                        <li>Día de máxima compra y material</li>
+                        <li>Material más comprado</li>
+                        <li>Material menos comprado</li>
+                        <li>Dinero invertido diario y total</li>
+                        <li>Venta aproximada por material</li>
+                        <li>Utilidad aproximada</li>
+                        <li>Gráficas en ventanas independientes</li>
+                        <li>Reporte PDF completo</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Análisis de operaciones -->
+        <div id="analisisOperaciones" style="display: none;">
+            <div id="resumenEjecutivo" class="card resumen-ejecutivo"></div>
+            <div class="card">
+                <h3>📈 DETALLE COMPLETO POR MATERIAL</h3>
+                <div id="detalleMateriales" class="scrollable-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gráficos -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <div id="chartContainer" class="chart-container">
+                <canvas id="chartCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de ayuda -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h2>❓ AYUDA - CÓMO USAR EL SISTEMA</h2>
+            <div style="margin-top: 20px;">
+                <p>1. 📂 Cargar Excel: Selecciona tu archivo Excel (.xlsx o .xlsm)</p>
+                <p>2. 🔄 El sistema detecta automáticamente las columnas</p>
+                <p>3. 📊 Se analizan KG, dinero y utilidades automáticamente</p>
+                <p>4. 📈 Cada gráfico se abre en ventana independiente:</p>
+                <ul style="margin-left: 20px;">
+                    <li>KG por Día</li>
+                    <li>Top Materiales</li>
+                    <li>Dinero por Día</li>
+                    <li>Utilidades</li>
+                </ul>
+                <p>5. 📄 Generar PDF: Reporte completo con gráficas y datos</p>
+                <p style="margin-top: 15px;">📝 El sistema analiza TODO lo solicitado:</p>
+                <ul style="margin-left: 20px;">
+                    <li>KG comprados por día y total</li>
+                    <li>Material más y menos comprado</li>
+                    <li>Dinero invertido diario y total</li>
+                    <li>Ventas y utilidades aproximadas por material</li>
+                    <li>Día de máxima compra y material correspondiente</li>
+                </ul>
+                <p style="margin-top: 15px;">⚠️ Compatible con archivos .xlsx y .xlsm</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let datosOperaciones = null;
+        let analisisActual = null;
+        let currentChart = null;
+
+        // Precios estimados (iguales a tu Python)
+        const preciosVenta = {
+            'CARTON': 2.0, 'PET': 6.7, 'BOTE': 32.0, 'ALUMINIO': 27.0,
+            'FIERRO': 4.5, 'CU 1': 184.5, 'CU 2': 177.5, 'BRONCE': 123.0,
+            'ACERO INOX': 4.5, 'R/A': 30.0, 'ALUMINIO GRUESO (L)': 39.5,
+            'ALUMINIO TRASTE (L)': 38.5, 'BRONCE (L)': 123.0, 'BRONCE (S)': 123.0,
+            'RADIADOR LIN COBRE': 84.0, 'CAJA BOILER': 84.0, 'RIN ALUMINIO': 45.0,
+            'ALUMINIO DELGADO': 30.5, 'ALUMINIO TUBO': 32.5, 'ALUMINIO CABLE (L)': 60.0,
+            'ALUMINIO SPRAY (S)': 48.0, 'ALUMINIO PERFIL S/PINTURA (L)': 58.5,
+            'ALUMINIO PERFIL C/PINTURA (L)': 48.5, 'CU ESTAÑADO': 180.5
+        };
+
+        const preciosCompra = {
+            'CARTON': 1.2, 'PET': 3.5, 'BOTE': 28.0, 'ALUMINIO': 18.0,
+            'FIERRO': 3.3, 'CU 1': 156.0, 'CU 2': 150.0, 'BRONCE': 98.0,
+            'ACERO INOX': 3.3, 'R/A': 24.0, 'ALUMINIO GRUESO (L)': 31.0,
+            'ALUMINIO TRASTE (L)': 30.0, 'BRONCE (L)': 98.0, 'BRONCE (S)': 70.0,
+            'RADIADOR LIN COBRE': 72.0, 'CAJA BOILER': 72.0, 'RIN ALUMINIO': 38.0,
+            'ALUMINIO DELGADO': 24.0, 'ALUMINIO TUBO': 26.0, 'ALUMINIO CABLE (L)': 48.0,
+            'ALUMINIO SPRAY (S)': 18.0, 'ALUMINIO PERFIL S/PINTURA (L)': 40.0,
+            'ALUMINIO PERFIL C/PINTURA (L)': 33.0, 'CU ESTAÑADO': 153.0
+        };
+
+        // Configurar el input de archivo
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                selectArchive(e.target.files[0]);
+            }
+        });
+
+        // Función para seleccionar archivo
+        function selectArchive(file = null) {
+            if (!file) {
+                document.getElementById('fileInput').click();
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Buscar la hoja de operaciones
+                    let hojaOperaciones = null;
+                    const nombresPosibles = ['OPERACIONES DIARIAS', 'OPERACIONES', 'OPERACIONES DIARIAS ', 'HOJA1', 'Sheet1', 'DATOS'];
+                    
+                    for (const nombre of nombresPosibles) {
+                        if (workbook.SheetNames.includes(nombre)) {
+                            hojaOperaciones = nombre;
+                            break;
+                        }
+                    }
+                    
+                    if (hojaOperaciones === null) {
+                        hojaOperaciones = workbook.SheetNames[0];
+                    }
+                    
+                    // Convertir a JSON
+                    const worksheet = workbook.Sheets[hojaOperaciones];
+                    datosOperaciones = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    mostrarMensaje("✅ Archivo Excel cargado correctamente", "success");
+                    mostrarAnalisisOperaciones();
+                    
+                } catch (error) {
+                    mostrarMensaje(`❌ Error: ${error.message}`, "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Función para mostrar mensajes
+        function mostrarMensaje(mensaje, tipo) {
+            // Eliminar mensajes anteriores
+            const mensajesAnteriores = document.querySelectorAll('.status-message');
+            mensajesAnteriores.forEach(msg => msg.remove());
+            
+            // Crear nuevo mensaje
+            const mensajeElement = document.createElement('div');
+            mensajeElement.className = `status-message ${tipo}`;
+            mensajeElement.textContent = mensaje;
+            
+            // Insertar después del título principal
+            const mainTitle = document.querySelector('.main-title');
+            mainTitle.parentNode.insertBefore(mensajeElement, mainTitle.nextSibling);
+        }
+
+        // Función para mostrar análisis de operaciones
+        function mostrarAnalisisOperaciones() {
+            if (!datosOperaciones) {
+                mostrarPantallaInicial();
+                return;
+            }
+            
+            try {
+                // Ocultar pantalla inicial
+                document.getElementById('pantallaInicial').style.display = 'none';
+                document.getElementById('analisisOperaciones').style.display = 'block';
+                
+                // Procesar datos
+                const datosProcesados = procesarDatosExcel(datosOperaciones);
+                
+                // Realizar análisis
+                analisisActual = analizarOperacionesSemanales(datosProcesados);
+                
+                // Mostrar resumen ejecutivo
+                mostrarResumenEjecutivo(analisisActual);
+                
+                // Mostrar detalle por materiales
+                mostrarDetalleMateriales(analisisActual);
+                
+            } catch (error) {
+                mostrarMensaje(`❌ Error en análisis: ${error.message}`, "error");
+            }
+        }
+
+        // Función para procesar datos de Excel
+        function procesarDatosExcel(datos) {
+            if (!datos || datos.length < 2) {
+                throw new Error('No hay datos suficientes en el archivo');
+            }
+            
+            const encabezados = datos[0];
+            const filas = datos.slice(1);
+            
+            // Buscar índices de columnas
+            let indiceFecha = -1;
+            let indiceOperacion = -1;
+            let indiceProducto = -1;
+            let indiceKG = -1;
+            let indiceTotal = -1;
+            
+            for (let i = 0; i < encabezados.length; i++) {
+                const encabezado = String(encabezados[i]).toLowerCase();
+                if (encabezado.includes('fecha')) indiceFecha = i;
+                else if (encabezado.includes('operación') || encabezado.includes('operacion')) indiceOperacion = i;
+                else if (encabezado.includes('producto') || encabezado.includes('material')) indiceProducto = i;
+                else if (encabezado.includes('kg') || encabezado.includes('kilo')) indiceKG = i;
+                else if ((encabezado.includes('total') && encabezado.includes('compra')) || 
+                        (encabezado.includes('total') && indiceTotal === -1)) indiceTotal = i;
+            }
+            
+            // Si no encontramos algunas columnas, usar las primeras
+            if (indiceFecha === -1) indiceFecha = 0;
+            if (indiceOperacion === -1 && encabezados.length > 1) indiceOperacion = 1;
+            if (indiceProducto === -1 && encabezados.length > 2) indiceProducto = 2;
+            if (indiceKG === -1 && encabezados.length > 3) indiceKG = 3;
+            if (indiceTotal === -1 && encabezados.length > 4) indiceTotal = 4;
+            
+            // Procesar filas
+            const datosProcesados = [];
+            for (const fila of filas) {
+                if (!fila || fila.length <= Math.max(indiceFecha, indiceOperacion, indiceProducto, indiceKG, indiceTotal)) {
+                    continue;
+                }
+                
+                const fecha = parsearFecha(fila[indiceFecha]);
+                const operacion = String(fila[indiceOperacion] || '').toUpperCase();
+                const producto = String(fila[indiceProducto] || '').trim();
+                const kg = parseFloat(fila[indiceKG]) || 0;
+                let totalCompra = parseFloat(fila[indiceTotal]) || 0;
+                
+                // Si no hay total, calcularlo
+                if (totalCompra === 0) {
+                    totalCompra = kg * obtenerPrecioCompra(producto);
+                }
+                
+                // Solo incluir filas válidas
+                if (fecha && producto && kg > 0) {
+                    datosProcesados.push({
+                        fecha: fecha,
+                        operacion: operacion,
+                        producto: producto,
+                        kg: kg,
+                        totalCompra: totalCompra
+                    });
+                }
+            }
+            
+            return datosProcesados;
+        }
+
+        // Función para analizar operaciones semanales
+        function analizarOperacionesSemanales(datos) {
+            if (!datos || datos.length === 0) {
+                throw new Error('No hay datos válidos para analizar');
+            }
+            
+            // Agrupar por fecha
+            const kgPorDia = {};
+            const dineroPorDia = {};
+            const materialPorDia = {};
+            const materiales = {};
+            
+            for (const dato of datos) {
+                const fechaStr = dato.fecha.toISOString().split('T')[0];
+                
+                // KG por día
+                if (!kgPorDia[fechaStr]) kgPorDia[fechaStr] = 0;
+                kgPorDia[fechaStr] += dato.kg;
+                
+                // Dinero por día
+                if (!dineroPorDia[fechaStr]) dineroPorDia[fechaStr] = 0;
+                dineroPorDia[fechaStr] += dato.totalCompra;
+                
+                // Material por día
+                if (!materialPorDia[fechaStr]) materialPorDia[fechaStr] = {};
+                if (!materialPorDia[fechaStr][dato.producto]) materialPorDia[fechaStr][dato.producto] = 0;
+                materialPorDia[fechaStr][dato.producto] += dato.kg;
+                
+                // Acumular por material
+                if (!materiales[dato.producto]) {
+                    materiales[dato.producto] = {
+                        kg: 0,
+                        compra: 0,
+                        ventaAproximada: 0,
+                        utilidadAproximada: 0
+                    };
+                }
+                
+                materiales[dato.producto].kg += dato.kg;
+                materiales[dato.producto].compra += dato.totalCompra;
+            }
+            
+            // Encontrar día con máxima compra
+            let diaMaxCompra = null;
+            let maxKgDia = 0;
+            for (const fecha in kgPorDia) {
+                if (kgPorDia[fecha] > maxKgDia) {
+                    maxKgDia = kgPorDia[fecha];
+                    diaMaxCompra = fecha;
+                }
+            }
+            
+            // Encontrar material más comprado por día
+            const materialMaxPorDia = {};
+            for (const fecha in materialPorDia) {
+                let maxMaterial = '';
+                let maxKg = 0;
+                
+                for (const material in materialPorDia[fecha]) {
+                    if (materialPorDia[fecha][material] > maxKg) {
+                        maxKg = materialPorDia[fecha][material];
+                        maxMaterial = material;
+                    }
+                }
+                
+                if (maxMaterial) {
+                    materialMaxPorDia[fecha] = maxMaterial;
+                }
+            }
+            
+            // Encontrar material más y menos comprado
+            let materialMasComprado = null;
+            let kgMaterialMasComprado = 0;
+            let materialMenosComprado = null;
+            let kgMaterialMenosComprado = Infinity;
+            
+            for (const material in materiales) {
+                if (materiales[material].kg > kgMaterialMasComprado) {
+                    kgMaterialMasComprado = materiales[material].kg;
+                    materialMasComprado = material;
+                }
+                
+                if (materiales[material].kg < kgMaterialMenosComprado) {
+                    kgMaterialMenosComprado = materiales[material].kg;
+                    materialMenosComprado = material;
+                }
+                
+                // Calcular venta y utilidad aproximada
+                const precioVenta = obtenerPrecioVenta(material);
+                materiales[material].ventaAproximada = materiales[material].kg * precioVenta;
+                materiales[material].utilidadAproximada = materiales[material].ventaAproximada - materiales[material].compra;
+            }
+            
+            // Totales
+            const kgTotalesSemana = Object.values(materiales).reduce((sum, mat) => sum + mat.kg, 0);
+            const dineroTotalSemana = Object.values(materiales).reduce((sum, mat) => sum + mat.compra, 0);
+            const ventaTotalAproximada = Object.values(materiales).reduce((sum, mat) => sum + mat.ventaAproximada, 0);
+            const utilidadTotalAproximada = Object.values(materiales).reduce((sum, mat) => sum + mat.utilidadAproximada, 0);
+            
+            // Fechas del período analizado
+            const fechas = Object.keys(kgPorDia).sort();
+            const periodoAnalizado = fechas.length > 0 ? 
+                `${formatearFecha(new Date(fechas[0]))} - ${formatearFecha(new Date(fechas[fechas.length - 1]))}` : 
+                'N/A';
+            
+            return {
+                kgTotalesSemana: kgTotalesSemana,
+                kgPorDia: kgPorDia,
+                diaMaxCompra: diaMaxCompra,
+                maxKgDia: maxKgDia,
+                materialPorDia: materialMaxPorDia,
+                materialMasComprado: materialMasComprado,
+                kgMaterialMasComprado: kgMaterialMasComprado,
+                materialMenosComprado: materialMenosComprado,
+                kgMaterialMenosComprado: kgMaterialMenosComprado,
+                dineroPorDia: dineroPorDia,
+                dineroTotalSemana: dineroTotalSemana,
+                ventaUtilidadMaterial: materiales,
+                ventaTotalAproximada: ventaTotalAproximada,
+                utilidadTotalAproximada: utilidadTotalAproximada,
+                totalMateriales: Object.keys(materiales).length,
+                periodoAnalizado: periodoAnalizado
+            };
+        }
+
+        // Función para mostrar resumen ejecutivo
+        function mostrarResumenEjecutivo(analisis) {
+            const resumenContainer = document.getElementById('resumenEjecutivo');
+            
+            let html = `
+                <h3>📊 RESUMEN EJECUTIVO</h3>
+                <p style="margin: 10px 0; font-weight: bold; color: #7f8c8d;">
+                    📅 Período analizado: ${analisis.periodoAnalizado || 'N/A'}
+                </p>
+                <div class="metric-row">
+            `;
+            
+            // Métricas principales
+            const metricas = [
+                { titulo: '📦 KG Totales', valor: `${analisis.kgTotalesSemana.toLocaleString('es-MX')} kg`, color: '#27ae60' },
+                { titulo: '💰 Inversión Total', valor: `$${analisis.dineroTotalSemana.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#e74c3c' },
+                { titulo: '🏆 Material Top', valor: analisis.materialMasComprado || 'N/A', color: '#9b59b6' },
+                { titulo: '📈 Día Máximo', valor: analisis.diaMaxCompra ? formatearFecha(new Date(analisis.diaMaxCompra)) : 'N/A', color: '#f39c12' },
+                { titulo: '💵 Venta Aprox', valor: `$${analisis.ventaTotalAproximada.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#27ae60' },
+                { titulo: '📊 Utilidad Aprox', valor: `$${analisis.utilidadTotalAproximada.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#2ecc71' },
+                { titulo: '📋 Total Materiales', valor: analisis.totalMateriales, color: '#3498db' },
+                { titulo: '📉 Material Menos', valor: analisis.materialMenosComprado || 'N/A', color: '#e67e22' }
+            ];
+            
+            metricas.forEach(metrica => {
+                html += `
+                    <div class="metric">
+                        <div class="metric-title">${metrica.titulo}</div>
+                        <div class="metric-value" style="color: ${metrica.color}">${metrica.valor}</div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+            resumenContainer.innerHTML = html;
+        }
+
+        // Función para mostrar detalle por materiales
+        function mostrarDetalleMateriales(analisis) {
+            const detalleContainer = document.getElementById('detalleMateriales');
+            
+            if (!analisis.ventaUtilidadMaterial || Object.keys(analisis.ventaUtilidadMaterial).length === 0) {
+                detalleContainer.innerHTML = '<p>No hay datos de materiales para mostrar</p>';
+                return;
+            }
+            
+            // Ordenar materiales por KG (de mayor a menor)
+            const materialesOrdenados = Object.entries(analisis.ventaUtilidadMaterial)
+                .sort((a, b) => b[1].kg - a[1].kg);
+            
+            let html = '';
+            
+            materialesOrdenados.forEach(([producto, datos]) => {
+                const utilidadColor = datos.utilidadAproximada >= 0 ? '#2ecc71' : '#e74c3c';
+                
+                html += `
+                    <div class="material-detail">
+                        <div class="material-header">📦 ${producto}</div>
+                        <div class="material-data">
+                            <div class="material-metrics">
+                                <div class="material-metric">⚖️ ${datos.kg.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg</div>
+                                <div class="material-metric">💰 Compra: $${datos.compra.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                                <div class="material-metric">📊 Venta: $${datos.ventaAproximada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                                <div class="material-metric" style="color: ${utilidadColor}; font-weight: bold;">💵 Utilidad: $${datos.utilidadAproximada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            detalleContainer.innerHTML = html;
+        }
+
+        // Funciones para mostrar gráficos
+        function mostrarGraficoKGporDia() {
+            if (!analisisActual) {
+                mostrarMensaje('Primero carga y analiza un archivo', 'warning');
+                return;
+            }
+            
+            const kgPorDia = analisisActual.kgPorDia;
+            if (!kgPorDia || Object.keys(kgPorDia).length === 0) {
+                mostrarMensaje('No hay datos de KG por día para mostrar', 'warning');
+                return;
+            }
+            
+            const fechas = Object.keys(kgPorDia).sort();
+            const kgs = fechas.map(fecha => kgPorDia[fecha]);
+            
+            mostrarGrafico(
+                'KG COMPRADOS POR DÍA',
+                'bar',
+                fechas.map(f => formatearFecha(new Date(f))),
+                [{ 
+                    label: 'KILOGRAMOS (KG)', 
+                    data: kgs, 
+                    backgroundColor: 'rgba(135, 206, 235, 0.7)',
+                    borderColor: 'rgba(0, 0, 128, 1)',
+                    borderWidth: 1
+                }],
+                'KILOGRAMOS (KG)',
+                'día'
+            );
+        }
+
+        function mostrarGraficoTopMateriales() {
+            if (!analisisActual) {
+                mostrarMensaje('Primero carga y analiza un archivo', 'warning');
+                return;
+            }
+            
+            const materiales = analisisActual.ventaUtilidadMaterial;
+            if (!materiales || Object.keys(materiales).length === 0) {
+                mostrarMensaje('No hay datos de materiales para mostrar', 'warning');
+                return;
+            }
+            
+            // Ordenar y tomar los top 10
+            const topMateriales = Object.entries(materiales)
+                .sort((a, b) => b[1].kg - a[1].kg)
+                .slice(0, 10);
+            
+            const nombres = topMateriales.map(([nombre]) => nombre);
+            const kgs = topMateriales.map(([, datos]) => datos.kg);
+            
+            mostrarGrafico(
+                'TOP 10 MATERIALES POR KG COMPRADOS',
+                'bar',
+                nombres,
+                [{ 
+                    label: 'KILOGRAMOS (KG)', 
+                    data: kgs, 
+                    backgroundColor: 'rgba(144, 238, 144, 0.7)',
+                    borderColor: 'rgba(0, 128, 0, 1)',
+                    borderWidth: 1
+                }],
+                'KILOGRAMOS (KG)',
+                'material'
+            );
+        }
+
+        function mostrarGraficoDineroDia() {
+            if (!analisisActual) {
+                mostrarMensaje('Primero carga y analiza un archivo', 'warning');
+                return;
+            }
+            
+            const dineroPorDia = analisisActual.dineroPorDia;
+            if (!dineroPorDia || Object.keys(dineroPorDia).length === 0) {
+                mostrarMensaje('No hay datos de dinero por día para mostrar', 'warning');
+                return;
+            }
+            
+            const fechas = Object.keys(dineroPorDia).sort();
+            const dinero = fechas.map(fecha => dineroPorDia[fecha]);
+            
+            mostrarGrafico(
+                'DINERO INVERTIDO POR DÍA',
+                'bar',
+                fechas.map(f => formatearFecha(new Date(f))),
+                [{ 
+                    label: 'DÓLARES ($)', 
+                    data: dinero, 
+                    backgroundColor: 'rgba(255, 215, 0, 0.7)',
+                    borderColor: 'rgba(255, 140, 0, 1)',
+                    borderWidth: 1
+                }],
+                'DÓLARES ($)',
+                'día'
+            );
+        }
+
+        function mostrarGraficoUtilidades() {
+            if (!analisisActual) {
+                mostrarMensaje('Primero carga y analiza un archivo', 'warning');
+                return;
+            }
+            
+            const materiales = analisisActual.ventaUtilidadMaterial;
+            if (!materiales || Object.keys(materiales).length === 0) {
+                mostrarMensaje('No hay datos de materiales para mostrar', 'warning');
+                return;
+            }
+            
+            // Ordenar y tomar los top 10 por utilidad
+            const topUtilidades = Object.entries(materiales)
+                .sort((a, b) => b[1].utilidadAproximada - a[1].utilidadAproximada)
+                .slice(0, 10);
+            
+            const nombres = topUtilidades.map(([nombre]) => nombre);
+            const utilidades = topUtilidades.map(([, datos]) => datos.utilidadAproximada);
+            const colores = utilidades.map(u => u >= 0 ? 'rgba(46, 204, 113, 0.7)' : 'rgba(231, 76, 60, 0.7)');
+            
+            mostrarGrafico(
+                'TOP 10 MATERIALES POR UTILIDAD APROXIMADA',
+                'bar',
+                nombres,
+                [{ 
+                    label: 'UTILIDAD ($)', 
+                    data: utilidades, 
+                    backgroundColor: colores,
+                    borderColor: colores,
+                    borderWidth: 1
+                }],
+                'UTILIDAD ($)',
+                'material'
+            );
+        }
+
+        // Función genérica para mostrar gráficos
+        function mostrarGrafico(titulo, tipo, etiquetas, datasets, labelEjeY, labelEjeX) {
+            // Cerrar gráfico anterior si existe
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            // Mostrar modal
+            const modal = document.getElementById('chartModal');
+            const canvas = document.getElementById('chartCanvas');
+            const container = document.getElementById('chartContainer');
+            
+            // Ajustar tamaño
+            container.style.height = '500px';
+            canvas.width = container.offsetWidth - 40;
+            canvas.height = container.offsetHeight - 20;
+            
+            modal.style.display = 'flex';
+            
+            // Configurar contexto del canvas
+            const ctx = canvas.getContext('2d');
+            
+            // Crear nuevo gráfico
+            currentChart = new Chart(ctx, {
+                type: tipo,
+                data: {
+                    labels: etiquetas,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: titulo,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: labelEjeY,
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: labelEjeX,
+                                font: {
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para cerrar modal
+        function closeModal() {
+            document.getElementById('chartModal').style.display = 'none';
+            document.getElementById('helpModal').style.display = 'none';
+            
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+        }
+
+        // Función para mostrar ayuda
+        function mostrarAyuda() {
+            document.getElementById('helpModal').style.display = 'flex';
+        }
+
+        // Función para mostrar pantalla inicial
+        function mostrarPantallaInicial() {
+            document.getElementById('pantallaInicial').style.display = 'block';
+            document.getElementById('analisisOperaciones').style.display = 'none';
+        }
+
+        // Función para generar reporte PDF
+        async function generarReporteCompletoPDF() {
+            if (!analisisActual) {
+                mostrarMensaje('Primero carga y analiza un archivo Excel', 'warning');
+                return;
+            }
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF();
+                
+                // Título
+                pdf.setFontSize(20);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('REPORTE COMPLETO - DC-ACERO', 105, 15, { align: 'center' });
+                
+                // Información general
+                pdf.setFontSize(12);
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`Fecha de generación: ${new Date().toLocaleString('es-MX')}`, 20, 30);
+                pdf.text(`Período analizado: ${analisisActual.periodoAnalizado || 'N/A'}`, 20, 40);
+                pdf.text(`Total materiales analizados: ${analisisActual.totalMateriales}`, 20, 50);
+                
+                // Resumen ejecutivo
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('RESUMEN EJECUTIVO', 20, 70);
+                
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'normal');
+                let yPos = 85;
+                pdf.text(`KG totales comprados: ${analisisActual.kgTotalesSemana.toLocaleString('es-MX')} kg`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Inversión total en compras: $${analisisActual.dineroTotalSemana.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Material más comprado: ${analisisActual.materialMasComprado} (${analisisActual.kgMaterialMasComprado.toLocaleString('es-MX')} kg)`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Material menos comprado: ${analisisActual.materialMenosComprado} (${analisisActual.kgMaterialMenosComprado.toLocaleString('es-MX')} kg)`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Día de máxima compra: ${analisisActual.diaMaxCompra ? formatearFecha(new Date(analisisActual.diaMaxCompra)) : 'N/A'} (${analisisActual.maxKgDia.toLocaleString('es-MX')} kg)`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Venta total aproximada: $${analisisActual.ventaTotalAproximada.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, yPos);
+                yPos += 8;
+                pdf.text(`Utilidad total aproximada: $${analisisActual.utilidadTotalAproximada.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, yPos);
+                
+                // Tabla de materiales
+                pdf.addPage();
+                pdf.setFontSize(16);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('DETALLE COMPLETO POR MATERIAL', 20, 20);
+                
+                // Encabezados de tabla
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('MATERIAL', 20, 35);
+                pdf.text('KG', 80, 35);
+                pdf.text('COMPRA', 100, 35);
+                pdf.text('VENTA APROX', 130, 35);
+                pdf.text('UTILIDAD APROX', 160, 35);
+                
+                // Datos de la tabla
+                pdf.setFont(undefined, 'normal');
+                let tablaY = 45;
+                const materialesOrdenados = Object.entries(analisisActual.ventaUtilidadMaterial)
+                    .sort((a, b) => b[1].kg - a[1].kg);
+                
+                for (const [producto, datos] of materialesOrdenados) {
+                    if (tablaY > 270) {
+                        pdf.addPage();
+                        tablaY = 20;
+                    }
+                    
+                    const nombre = producto.length > 20 ? producto.substring(0, 17) + '...' : producto;
+                    
+                    pdf.text(nombre, 20, tablaY);
+                    pdf.text(datos.kg.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }), 80, tablaY);
+                    pdf.text(`$${datos.compra.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, 100, tablaY);
+                    pdf.text(`$${datos.ventaAproximada.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, 130, tablaY);
+                    
+                    const utilidadText = `$${Math.abs(datos.utilidadAproximada).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                    if (datos.utilidadAproximada < 0) {
+                        pdf.setTextColor(255, 0, 0);
+                        pdf.text(`-${utilidadText}`, 160, tablaY);
+                        pdf.setTextColor(0, 0, 0);
+                    } else {
+                        pdf.setTextColor(0, 128, 0);
+                        pdf.text(utilidadText, 160, tablaY);
+                        pdf.setTextColor(0, 0, 0);
+                    }
+                    
+                    tablaY += 8;
+                }
+                
+                // Guardar PDF
+                const fecha = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                const nombreArchivo = `Reporte_DC-ACERO_${fecha}.pdf`;
+                pdf.save(nombreArchivo);
+                
+                mostrarMensaje(`✅ PDF generado exitosamente: ${nombreArchivo}`, 'success');
+                
+            } catch (error) {
+                mostrarMensaje(`❌ Error al generar PDF: ${error.message}`, 'error');
+            }
+        }
+
+        // Funciones auxiliares
+        function parsearFecha(fechaStr) {
+            if (!fechaStr) return null;
+            
+            const fecha = new Date(fechaStr);
+            if (!isNaN(fecha.getTime())) {
+                return fecha;
+            }
+            
+            const partes = String(fechaStr).split('/');
+            if (partes.length === 3) {
+                return new Date(partes[2], partes[1] - 1, partes[0]);
+            }
+            
+            return null;
+        }
+
+        function formatearFecha(fecha) {
+            if (!fecha) return 'N/A';
+            return fecha.toLocaleDateString('es-MX');
+        }
+
+        function obtenerPrecioVenta(producto) {
+            const productoUpper = String(producto).toUpperCase().trim();
+            
+            for (const key in preciosVenta) {
+                if (productoUpper.includes(key)) {
+                    return preciosVenta[key];
+                }
+            }
+            
+            if (productoUpper.includes('CARTON')) return 2.0;
+            else if (productoUpper.includes('PET')) return 6.7;
+            else if (productoUpper.includes('BOTE')) return 32.0;
+            else if (productoUpper.includes('ALUMINIO')) return 27.0;
+            else if (productoUpper.includes('FIERRO')) return 4.5;
+            else if (productoUpper.includes('CU 1') || productoUpper.includes('COBRE 1')) return 184.5;
+            else if (productoUpper.includes('CU 2') || productoUpper.includes('COBRE 2')) return 177.5;
+            else if (productoUpper.includes('BRONCE')) return 123.0;
+            else if (productoUpper.includes('ACERO') || productoUpper.includes('INOX')) return 4.5;
+            else if (productoUpper.includes('RADIADOR')) return 84.0;
+            else return 15.0;
+        }
+
+        function obtenerPrecioCompra(producto) {
+            const productoUpper = String(producto).toUpperCase().trim();
+            
+            for (const key in preciosCompra) {
+                if (productoUpper.includes(key)) {
+                    return preciosCompra[key];
+                }
+            }
+            
+            if (productoUpper.includes('CARTON')) return 1.2;
+            else if (productoUpper.includes('PET')) return 3.5;
+            else if (productoUpper.includes('BOTE')) return 28.0;
+            else if (productoUpper.includes('ALUMINIO')) return 18.0;
+            else if (productoUpper.includes('FIERRO')) return 3.3;
+            else if (productoUpper.includes('CU 1') || productoUpper.includes('COBRE 1')) return 156.0;
+            else if (productoUpper.includes('CU 2') || productoUpper.includes('COBRE 2')) return 150.0;
+            else if (productoUpper.includes('BRONCE')) return 98.0;
+            else if (productoUpper.includes('ACERO') || productoUpper.includes('INOX')) return 3.3;
+            else if (productoUpper.includes('RADIADOR')) return 72.0;
+            else return 8.0;
+        }
+
+        // Inicializar con pantalla inicial
+        window.onload = function() {
+            mostrarPantallaInicial();
+        };
+    </script>
+</body>
+</html>
