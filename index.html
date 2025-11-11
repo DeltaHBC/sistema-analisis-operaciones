@@ -183,7 +183,7 @@
         }
 
         .chart-container {
-            height: 400px;
+            height: 500px;
             margin-bottom: 20px;
         }
 
@@ -203,8 +203,8 @@
         .modal-content {
             background-color: white;
             border-radius: 10px;
-            width: 90%;
-            max-width: 900px;
+            width: 95%;
+            max-width: 1200px;
             max-height: 90vh;
             overflow-y: auto;
             padding: 20px;
@@ -314,7 +314,7 @@
             <h2>Análisis de Operaciones</h2>
         </div>
         <div class="logo-placeholder">
-            ⚡
+            <img src="ACERO LOGO.jpg" height="100" width="100">
         </div>
         <div class="sidebar-buttons">
             <button class="sidebar-button" onclick="selectArchive()">📂 Cargar Excel</button>
@@ -418,6 +418,7 @@
         let datosOperaciones = null;
         let analisisActual = null;
         let currentChart = null;
+        let datosProcesados = null;
 
         // Precios estimados (iguales a tu Python)
         const preciosVenta = {
@@ -520,7 +521,7 @@
                 document.getElementById('analisisOperaciones').style.display = 'block';
                 
                 // Procesar datos
-                const datosProcesados = procesarDatosExcel(datosOperaciones);
+                datosProcesados = procesarDatosExcel(datosOperaciones);
                 
                 // Realizar análisis
                 analisisActual = analizarOperacionesSemanales(datosProcesados);
@@ -536,7 +537,7 @@
             }
         }
 
-        // Función para procesar datos de Excel
+        // Función para procesar datos de Excel - CORREGIDA
         function procesarDatosExcel(datos) {
             if (!datos || datos.length < 2) {
                 throw new Error('No hay datos suficientes en el archivo');
@@ -569,6 +570,14 @@
             if (indiceKG === -1 && encabezados.length > 3) indiceKG = 3;
             if (indiceTotal === -1 && encabezados.length > 4) indiceTotal = 4;
             
+            console.log("Columnas detectadas:", {
+                fecha: indiceFecha,
+                operacion: indiceOperacion,
+                producto: indiceProducto,
+                kg: indiceKG,
+                total: indiceTotal
+            });
+            
             // Procesar filas
             const datosProcesados = [];
             for (const fila of filas) {
@@ -588,7 +597,7 @@
                 }
                 
                 // Solo incluir filas válidas
-                if (fecha && producto && kg > 0) {
+                if (fecha && !isNaN(fecha.getTime()) && producto && kg > 0) {
                     datosProcesados.push({
                         fecha: fecha,
                         operacion: operacion,
@@ -599,10 +608,11 @@
                 }
             }
             
+            console.log("Datos procesados:", datosProcesados);
             return datosProcesados;
         }
 
-        // Función para analizar operaciones semanales
+        // Función para analizar operaciones semanales - CORREGIDA
         function analizarOperacionesSemanales(datos) {
             if (!datos || datos.length === 0) {
                 throw new Error('No hay datos válidos para analizar');
@@ -701,11 +711,19 @@
             const ventaTotalAproximada = Object.values(materiales).reduce((sum, mat) => sum + mat.ventaAproximada, 0);
             const utilidadTotalAproximada = Object.values(materiales).reduce((sum, mat) => sum + mat.utilidadAproximada, 0);
             
-            // Fechas del período analizado
+            // Fechas del período analizado - CORREGIDO
             const fechas = Object.keys(kgPorDia).sort();
-            const periodoAnalizado = fechas.length > 0 ? 
-                `${formatearFecha(new Date(fechas[0]))} - ${formatearFecha(new Date(fechas[fechas.length - 1]))}` : 
-                'N/A';
+            let periodoAnalizado = 'N/A';
+            
+            if (fechas.length > 0) {
+                const fechaInicio = new Date(fechas[0]);
+                const fechaFin = new Date(fechas[fechas.length - 1]);
+                
+                // Verificar que las fechas sean válidas
+                if (!isNaN(fechaInicio.getTime()) && !isNaN(fechaFin.getTime())) {
+                    periodoAnalizado = `${formatearFecha(fechaInicio)} - ${formatearFecha(fechaFin)}`;
+                }
+            }
             
             return {
                 kgTotalesSemana: kgTotalesSemana,
@@ -800,7 +818,7 @@
             detalleContainer.innerHTML = html;
         }
 
-        // Funciones para mostrar gráficos
+        // Funciones para mostrar gráficos (IDÉNTICAS A PYTHON)
         function mostrarGraficoKGporDia() {
             if (!analisisActual) {
                 mostrarMensaje('Primero carga y analiza un archivo', 'warning');
@@ -813,13 +831,13 @@
                 return;
             }
             
-            const fechas = Object.keys(kgPorDia).sort();
-            const kgs = fechas.map(fecha => kgPorDia[fecha]);
+            const dias = Object.keys(kgPorDia).sort();
+            const kgs = dias.map(dia => kgPorDia[dia]);
             
             mostrarGrafico(
                 'KG COMPRADOS POR DÍA',
                 'bar',
-                fechas.map(f => formatearFecha(new Date(f))),
+                dias.map(d => formatearFecha(new Date(d))),
                 [{ 
                     label: 'KILOGRAMOS (KG)', 
                     data: kgs, 
@@ -828,7 +846,8 @@
                     borderWidth: 1
                 }],
                 'KILOGRAMOS (KG)',
-                'día'
+                'FECHAS',
+                true
             );
         }
 
@@ -844,17 +863,16 @@
                 return;
             }
             
-            // Ordenar y tomar los top 10
+            // Ordenar y tomar los top 15 (como en Python)
             const topMateriales = Object.entries(materiales)
                 .sort((a, b) => b[1].kg - a[1].kg)
-                .slice(0, 10);
+                .slice(0, 15);
             
             const nombres = topMateriales.map(([nombre]) => nombre);
             const kgs = topMateriales.map(([, datos]) => datos.kg);
             
-            mostrarGrafico(
-                'TOP 10 MATERIALES POR KG COMPRADOS',
-                'bar',
+            mostrarGraficoHorizontal(
+                'TOP 15 MATERIALES POR KG COMPRADOS',
                 nombres,
                 [{ 
                     label: 'KILOGRAMOS (KG)', 
@@ -863,8 +881,7 @@
                     borderColor: 'rgba(0, 128, 0, 1)',
                     borderWidth: 1
                 }],
-                'KILOGRAMOS (KG)',
-                'material'
+                'KILOGRAMOS (KG)'
             );
         }
 
@@ -880,22 +897,23 @@
                 return;
             }
             
-            const fechas = Object.keys(dineroPorDia).sort();
-            const dinero = fechas.map(fecha => dineroPorDia[fecha]);
+            const dias = Object.keys(dineroPorDia).sort();
+            const dinero = dias.map(dia => dineroPorDia[dia]);
             
             mostrarGrafico(
                 'DINERO INVERTIDO POR DÍA',
                 'bar',
-                fechas.map(f => formatearFecha(new Date(f))),
+                dias.map(d => formatearFecha(new Date(d))),
                 [{ 
-                    label: 'DÓLARES ($)', 
+                    label: 'PESOS ($)', 
                     data: dinero, 
                     backgroundColor: 'rgba(255, 215, 0, 0.7)',
                     borderColor: 'rgba(255, 140, 0, 1)',
                     borderWidth: 1
                 }],
-                'DÓLARES ($)',
-                'día'
+                'PESOS ($)',
+                'FECHAS',
+                true
             );
         }
 
@@ -911,18 +929,17 @@
                 return;
             }
             
-            // Ordenar y tomar los top 10 por utilidad
+            // Ordenar y tomar los top 15 por utilidad (como en Python)
             const topUtilidades = Object.entries(materiales)
                 .sort((a, b) => b[1].utilidadAproximada - a[1].utilidadAproximada)
-                .slice(0, 10);
+                .slice(0, 15);
             
             const nombres = topUtilidades.map(([nombre]) => nombre);
             const utilidades = topUtilidades.map(([, datos]) => datos.utilidadAproximada);
             const colores = utilidades.map(u => u >= 0 ? 'rgba(46, 204, 113, 0.7)' : 'rgba(231, 76, 60, 0.7)');
             
-            mostrarGrafico(
-                'TOP 10 MATERIALES POR UTILIDAD APROXIMADA',
-                'bar',
+            mostrarGraficoHorizontalUtilidades(
+                'TOP 15 MATERIALES POR UTILIDAD APROXIMADA',
                 nombres,
                 [{ 
                     label: 'UTILIDAD ($)', 
@@ -931,13 +948,12 @@
                     borderColor: colores,
                     borderWidth: 1
                 }],
-                'UTILIDAD ($)',
-                'material'
+                'UTILIDAD ($)'
             );
         }
 
-        // Función genérica para mostrar gráficos
-        function mostrarGrafico(titulo, tipo, etiquetas, datasets, labelEjeY, labelEjeX) {
+        // Función genérica para mostrar gráficos verticales
+        function mostrarGrafico(titulo, tipo, etiquetas, datasets, labelEjeY, labelEjeX, mostrarValores = false) {
             // Cerrar gráfico anterior si existe
             if (currentChart) {
                 currentChart.destroy();
@@ -949,7 +965,7 @@
             const container = document.getElementById('chartContainer');
             
             // Ajustar tamaño
-            container.style.height = '500px';
+            container.style.height = '600px';
             canvas.width = container.offsetWidth - 40;
             canvas.height = container.offsetHeight - 20;
             
@@ -980,6 +996,13 @@
                         },
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString('es-MX')}`;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -989,18 +1012,182 @@
                                 display: true,
                                 text: labelEjeY,
                                 font: {
-                                    weight: 'bold'
+                                    weight: 'bold',
+                                    size: 12
                                 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
                             }
                         },
+                        x: {
+                            title: {
+                                display: true,
+                                text: labelEjeX,
+                                font: {
+                                    weight: 'bold',
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para gráficos horizontales (como Top Materiales)
+        function mostrarGraficoHorizontal(titulo, etiquetas, datasets, labelEjeX) {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const modal = document.getElementById('chartModal');
+            const canvas = document.getElementById('chartCanvas');
+            const container = document.getElementById('chartContainer');
+            
+            container.style.height = '700px';
+            canvas.width = container.offsetWidth - 40;
+            canvas.height = container.offsetHeight - 20;
+            
+            modal.style.display = 'flex';
+            
+            const ctx = canvas.getContext('2d');
+            
+            currentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: etiquetas,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: titulo,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.x.toLocaleString('es-MX')}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
                         x: {
                             beginAtZero: true,
                             title: {
                                 display: true,
                                 text: labelEjeX,
                                 font: {
-                                    weight: 'bold'
+                                    weight: 'bold',
+                                    size: 12
                                 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para gráficos de utilidades horizontales
+        function mostrarGraficoHorizontalUtilidades(titulo, etiquetas, datasets, labelEjeX) {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const modal = document.getElementById('chartModal');
+            const canvas = document.getElementById('chartCanvas');
+            const container = document.getElementById('chartContainer');
+            
+            container.style.height = '700px';
+            canvas.width = container.offsetWidth - 40;
+            canvas.height = container.offsetHeight - 20;
+            
+            modal.style.display = 'flex';
+            
+            const ctx = canvas.getContext('2d');
+            
+            currentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: etiquetas,
+                    datasets: datasets
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: titulo,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.x.toLocaleString('es-MX')}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: labelEjeX,
+                                font: {
+                                    weight: 'bold',
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            grid: {
+                                display: false
                             }
                         }
                     }
@@ -1030,7 +1217,7 @@
             document.getElementById('analisisOperaciones').style.display = 'none';
         }
 
-        // Función para generar reporte PDF
+        // Función para generar reporte PDF con gráficas
         async function generarReporteCompletoPDF() {
             if (!analisisActual) {
                 mostrarMensaje('Primero carga y analiza un archivo Excel', 'warning');
@@ -1135,25 +1322,62 @@
             }
         }
 
-        // Funciones auxiliares
+        // Funciones auxiliares CORREGIDAS
         function parsearFecha(fechaStr) {
             if (!fechaStr) return null;
             
-            const fecha = new Date(fechaStr);
+            // Si es un número de Excel (días desde 1900)
+            if (typeof fechaStr === 'number') {
+                // Los números de Excel son días desde el 1 de enero de 1900
+                const fecha = new Date(1900, 0, fechaStr - 1);
+                return fecha;
+            }
+
+            if (typeof fechaStr === 'number') {
+
+                const fechaBase = new Date(1899, 11, 30); // 30 de diciembre de 1899
+                const fecha = new Date(fechaBase.getTime() + fechaStr * 24 * 60 * 60 * 1000);
+                return fecha;
+            }
+            
+            // Intentar parsear como fecha ISO
+            let fecha = new Date(fechaStr);
             if (!isNaN(fecha.getTime())) {
                 return fecha;
             }
             
-            const partes = String(fechaStr).split('/');
-            if (partes.length === 3) {
-                return new Date(partes[2], partes[1] - 1, partes[0]);
+            // Intentar parsear formato dd/mm/yyyy
+            const partesSlash = String(fechaStr).split('/');
+            if (partesSlash.length === 3) {
+                fecha = new Date(partesSlash[2], partesSlash[1] - 1, partesSlash[0]);
+                if (!isNaN(fecha.getTime())) {
+                    return fecha;
+                }
             }
             
+            // Intentar parsear formato mm/dd/yyyy
+            const partesDash = String(fechaStr).split('-');
+            if (partesDash.length === 3) {
+                fecha = new Date(partesDash[0], partesDash[1] - 1, partesDash[2]);
+                if (!isNaN(fecha.getTime())) {
+                    return fecha;
+                }
+            }
+            
+            // Intentar parsear formato yyyy-mm-dd
+           if (partesDash.length === 3 && partesDash[0].length === 4) {
+                fecha = new Date(partesDash[0], partesDash[1] - 1, partesDash[2]);
+                if (!isNaN(fecha.getTime())) {
+                    return fecha;
+                }
+            }
+            
+            console.warn("No se pudo parsear la fecha:", fechaStr);
             return null;
         }
 
         function formatearFecha(fecha) {
-            if (!fecha) return 'N/A';
+            if (!fecha || isNaN(fecha.getTime())) return 'N/A';
             return fecha.toLocaleDateString('es-MX');
         }
 
